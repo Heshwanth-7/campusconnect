@@ -1,0 +1,26 @@
+{
+  "name": "campusconnect-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
+    "test": "vitest run --config vitest.config.ts",
+    "db:deploy": "prisma migrate deploy --config prisma7.config.ts"
+  },
+  "dependencies": {
+    "express": "latest",
+    "helmet": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "@types/supertest": "latest",
+    "prisma": "7.10.1",
+    "supertest": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
