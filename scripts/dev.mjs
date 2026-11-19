@@ -8,7 +8,7 @@ const requireFromClient = createRequire(new URL('package.json', client));
 const vite = join(dirname(requireFromClient.resolve('vite/package.json')), 'bin', 'vite.js');
 
 const processes = [
-  spawn(process.execPath, ['--watch', 'src/server.ts'], { cwd: server, stdio: 'inherit' }),
+  spawn(process.execPath, ['--env-file-if-exists=.env', '--watch', 'src/server.ts'], { cwd: server, stdio: 'inherit' }),
   spawn(process.execPath, [vite], { cwd: client, stdio: 'inherit' }),
 ];
 

@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
+import { HttpError } from '../utils/http-error.ts';
 import { z } from 'zod';
 
 const errorStatus = z.object({
@@ -19,8 +20,8 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   }
 
   const parsed = errorStatus.safeParse(error);
-  const status = parsed.success ? parsed.data.status : 500;
-  const message = messages[status] ?? (status >= 500 ? 'Internal server error.' : 'Request failed.');
+  const status = error instanceof z.ZodError ? 400 : parsed.success ? parsed.data.status : 500;
+  const message = (error instanceof HttpError ? error.message : messages[status]) ?? (status >= 500 ? 'Internal server error.' : 'Request failed.');
 
   response.status(status).json({ error: { status, message } });
 };
