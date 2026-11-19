@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import argon2 from 'argon2';
 import request from 'supertest';
 import type { Response } from 'supertest';
 import { afterAll, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -10,7 +11,7 @@ vi.mock('../services/auth-mail.ts', () => ({ sendAuthEmail: vi.fn(async () => {}
 
 const origin = 'http://localhost:5173';
 const prefix = `auth-${randomUUID()}-`;
-const password = 'campus123';
+const password = 'campus123!';
 const authPath = '/api/auth';
 
 beforeEach(() => {
@@ -84,8 +85,40 @@ describe('authentication', () => {
   });
 
   test('rejects a weak password', async () => {
-    await post('/register', { name: 'Campus Student', email: emailAddress(), password: 'onlyletters' })
+    await post('/register', { name: 'Campus Student', email: emailAddress(), password: 'onlyletters!' })
       .expect(400);
+  });
+
+  test('rejects registration when the password has no special character', async () => {
+    await post('/register', {
+      name: 'Campus Student', email: emailAddress(), password: 'campus 123',
+    }).expect(400);
+  });
+
+  test('rejects a reset password without a special character and keeps the reset link usable', async () => {
+    const email = await verifiedUser();
+    await post('/forgot-password', { email }).expect(200);
+    const token = mailedToken(email, 'reset-password');
+
+    await post('/reset-password', { token, password: 'newcampus456' }).expect(400);
+    await login(email).expect(204);
+    await post('/reset-password', { token, password: 'newcampus456@' }).expect(200);
+    await login(email, 'newcampus456@').expect(204);
+  });
+
+  test('logs in with a password created before the special-character rule', async () => {
+    const email = emailAddress();
+    const legacyPassword = 'campus123';
+    await db().user.create({
+      data: {
+        email,
+        name: 'Campus Student',
+        passwordHash: await argon2.hash(legacyPassword, { type: argon2.argon2id }),
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    await login(email, legacyPassword).expect(204);
   });
 
   test('accepts any email domain when the list is empty and stores email lowercase', async () => {
@@ -116,7 +149,15 @@ describe('authentication', () => {
     expect(locked.failedLoginCount).toBe(5);
     expect(locked.lockedUntil!.getTime()).toBeGreaterThanOrEqual(start + 15 * 60_000);
     expect(locked.lockedUntil!.getTime()).toBeLessThanOrEqual(Date.now() + 15 * 60_000);
-    await login(email).expect(401, failure);
+    await login(email, 'incorrect').expect(401, failure);
+    await login(email).expect(423, {
+      error: {
+        status: 423,
+        message: 'Account is temporarily locked.',
+        code: 'ACCOUNT_LOCKED',
+        lockedUntil: locked.lockedUntil!.toISOString(),
+      },
+    });
 
     await db().user.update({ where: { email }, data: { lockedUntil: new Date(Date.now() - 1) } });
     await login(email).expect(204);
@@ -215,14 +256,14 @@ describe('authentication', () => {
     expect(stored.tokenHash === hash(reset)).toBe(true);
     expect(JSON.stringify(stored).includes(reset)).toBe(false);
 
-    const resetResult = await post('/reset-password', { token: reset, password: 'newcampus456' }).expect(200);
-    await post('/reset-password', { token: reset, password: 'ignored789' }).expect(200, resetResult.body);
+    const resetResult = await post('/reset-password', { token: reset, password: 'newcampus456!' }).expect(200);
+    await post('/reset-password', { token: reset, password: 'ignored789!' }).expect(200, resetResult.body);
     await post('/reset-password', {
-      token: randomBytes(32).toString('base64url'), password: 'ignored789',
+      token: randomBytes(32).toString('base64url'), password: 'ignored789!',
     }).expect(200, resetResult.body);
     await refresh(refreshCookie).expect(401);
     await login(email).expect(401);
-    await login(email, 'newcampus456').expect(204);
+    await login(email, 'newcampus456!').expect(204);
   });
 
   test('logs out, revokes its refresh cookie, and clears both cookies', async () => {

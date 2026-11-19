@@ -164,6 +164,13 @@ export async function login(email: string, password: string) {
     const user = await lockUser(tx, candidate.id);
     if (!user || user.passwordHash !== candidate.passwordHash || user.blockedAt) return null;
     const now = new Date();
+    // Only someone who knows the password can learn whether the account is locked.
+    if (valid && user.lockedUntil && user.lockedUntil > now) {
+      throw new HttpError(423, 'Account is temporarily locked.', {
+        code: 'ACCOUNT_LOCKED',
+        lockedUntil: user.lockedUntil.toISOString(),
+      });
+    }
     if (!await checkPassword(tx, user, valid, now)) return null;
     if (!user.emailVerifiedAt) throw new HttpError(403, 'Verify your email before logging in.');
     await tx.user.update({

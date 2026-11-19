@@ -10,7 +10,9 @@
   "dependencies": {
     "react": "latest",
     "react-dom": "latest",
-    "react-router": "latest"
+    "react-hook-form": "^7.92.0",
+    "react-router": "latest",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "latest",
@@ -19,6 +21,7 @@
     "@vitejs/plugin-react": "latest",
     "tailwindcss": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

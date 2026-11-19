@@ -23,5 +23,6 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   const status = error instanceof z.ZodError ? 400 : parsed.success ? parsed.data.status : 500;
   const message = (error instanceof HttpError ? error.message : messages[status]) ?? (status >= 500 ? 'Internal server error.' : 'Request failed.');
 
-  response.status(status).json({ error: { status, message } });
+  const details = error instanceof HttpError ? error.details : undefined;
+  response.status(status).json({ error: { status, message, ...details } });
 };

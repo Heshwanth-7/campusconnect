@@ -7,7 +7,8 @@
 ## Authentication
 
 - Accounts must verify their email before signing in. The verification email links to the app, and the app must submit the token by POST. Opening the link alone cannot verify an account.
-- Passwords are hashed with Argon2id. A login with an unknown email still checks a dummy hash. Five failed attempts lock an account for 15 minutes. A successful login clears the counter.
+- Passwords are hashed with Argon2id. Sign-up and password reset require at least 8 characters, including a letter, a number, and a special character such as `!` or `@`. Existing passwords still work for login. A login with an unknown email still checks a dummy hash. Five failed attempts lock an account for 15 minutes. A successful login clears the counter.
+- During a lockout, the API returns the unlock time only when the submitted password is correct. The app uses that time to show a countdown. An incorrect password still returns the generic “Invalid email or password” message.
 - Access and refresh credentials are sent in HTTP-only cookies with SameSite=Lax and Secure in production. The access cookie lasts 15 minutes. The refresh cookie lasts seven days and is only sent under `/api/auth`.
 - The database stores SHA-256 hashes of verification, password reset, and refresh tokens. Verification and reset links are single-use. Verification links expire after 24 hours and reset links after one hour.
 - A refresh replaces the old token. Presenting a revoked token revokes all refresh tokens for that account. Password reset also revokes all refresh tokens. An already issued access token can last until its 15-minute expiry.
