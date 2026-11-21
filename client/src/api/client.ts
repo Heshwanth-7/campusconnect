@@ -58,7 +58,7 @@ function renewSession(requestGeneration: number) {
 
 export async function apiRequest(
   path: string,
-  options: { method?: 'GET' | 'POST'; body?: object; refresh?: boolean } = {},
+  options: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: object; refresh?: boolean } = {},
 ): Promise<unknown> {
   const { method = 'GET', body, refresh = true } = options;
   const requestGeneration = generation;

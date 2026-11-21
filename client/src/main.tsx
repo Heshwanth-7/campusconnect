@@ -1,8 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
-import { ProtectedRoute } from './components/RouteGuards';
+import { AppNav } from './components/AppNav';
+import { ProtectedRoute, RoleRoute } from './components/RouteGuards';
 import { AuthProvider } from './context/AuthContext';
+import { EventDetail } from './pages/EventDetail';
+import { EventForm } from './pages/EventForm';
+import { Events } from './pages/Events';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
@@ -27,7 +31,18 @@ createRoot(root).render(
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* Auth: signed in, any role. */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Home />} />
+            <Route element={<AppNav />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/events" element={<Events key="all" />} />
+              <Route path="/events/mine" element={<Events key="mine" mine />} />
+              <Route path="/events/:id" element={<EventDetail />} />
+              {/* Auth: event owner or admin. */}
+              <Route path="/events/:id/edit" element={<EventForm />} />
+              {/* Auth: organizer or admin. */}
+              <Route element={<RoleRoute roles={['ORGANIZER', 'ADMIN']} />}>
+                <Route path="/events/new" element={<EventForm />} />
+              </Route>
+            </Route>
           </Route>
           {/* Auth: public fallback. */}
           <Route path="*" element={<Navigate to="/" replace />} />

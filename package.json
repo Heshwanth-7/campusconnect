@@ -6,6 +6,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm run build --workspaces",
     "test": "npm run test --workspace server",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspaces",
+    "seed": "npm run seed --workspace server"
   }
 }
