@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { changeRegistration } from '../api/registrations';
+import type { RegistrationResult } from '../api/registrations';
+import { RegistrationStatus } from '../components/RegistrationStatus';
 import { deleteEvent } from '../api/events';
 import { CategoryBadge, EventStatusBadge } from '../components/EventBadges';
 import { Feedback } from '../components/Feedback';
@@ -15,7 +18,27 @@ export function EventDetail() {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [registration, setRegistration] = useState<{ eventId: string; summary: RegistrationResult }>();
+  const [registrationBusy, setRegistrationBusy] = useState(false);
+  const [registrationError, setRegistrationError] = useState('');
   const event = result?.event;
+  const summary = registration && registration.eventId === event?.id ? registration.summary : event;
+  const status = summary?.myRegistrationStatus;
+  const active = status === 'CONFIRMED' || status === 'WAITLISTED';
+  const open = event?.status === 'APPROVED' && Date.parse(event.startsAt) > Date.now();
+
+  async function updateRegistration(method: 'POST' | 'DELETE') {
+    if (!event) return;
+    setRegistrationBusy(true);
+    setRegistrationError('');
+    try {
+      setRegistration({ eventId: event.id, summary: await changeRegistration(event.id, method) });
+    } catch (error) {
+      setRegistrationError(errorMessage(error));
+    } finally {
+      setRegistrationBusy(false);
+    }
+  }
 
   async function remove() {
     if (!event || !window.confirm('Delete this event?')) return;
@@ -51,7 +74,7 @@ export function EventDetail() {
             <div><dt className="font-semibold">Starts</dt><dd><time dateTime={event.startsAt}>{formatEventTime(event.startsAt)}</time></dd></div>
             <div><dt className="font-semibold">Ends</dt><dd><time dateTime={event.endsAt}>{formatEventTime(event.endsAt)}</time></dd></div>
             <div><dt className="font-semibold">Venue</dt><dd className="break-words">{event.venue}</dd></div>
-            <div><dt className="font-semibold">Seats left</dt><dd>{event.seatsLeft} of {event.capacity}</dd></div>
+            <div><dt className="font-semibold">Seats left</dt><dd>{summary?.seatsLeft} of {event.capacity}</dd></div>
           </dl>
           {event.tags.length > 0 && (
             <ul aria-label="Event tags" className="flex flex-wrap gap-2">
@@ -60,8 +83,18 @@ export function EventDetail() {
           )}
           {canManage && event.status === 'REJECTED' && event.rejectionReason && <Feedback tone="error">{event.rejectionReason}</Feedback>}
           {deleteError && <Feedback tone="error">{deleteError}</Feedback>}
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="secondary-button" disabled>Registration coming soon</button>
+          {registrationError && <Feedback tone="error">{registrationError}</Feedback>}
+          <div className="flex flex-wrap items-center gap-2">
+            {active ? <>
+              <span role="status"><RegistrationStatus status={status} position={summary?.myWaitlistPosition ?? null} /></span>
+              <button type="button" className="secondary-button" disabled={registrationBusy}
+                onClick={() => void updateRegistration('DELETE')}>{registrationBusy ? 'Cancelling…' : 'Cancel registration'}</button>
+            </> : (
+              <button type="button" className="primary-button" disabled={!open || registrationBusy}
+                onClick={() => void updateRegistration('POST')}>
+                {registrationBusy ? 'Registering…' : !open ? 'Registration closed' : summary?.seatsLeft === 0 ? 'Event full: join waitlist' : 'Register'}
+              </button>
+            )}
             {canManage && <>
               <Link className="secondary-button inline-flex" to={`/events/${event.id}/edit`}>Edit event</Link>
               <button className="secondary-button text-danger" disabled={deleting} onClick={() => void remove()}>

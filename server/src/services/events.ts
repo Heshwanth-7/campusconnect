@@ -2,6 +2,7 @@ import type { Event, Prisma, Role } from '../generated/prisma/client.ts';
 import type { z } from 'zod';
 import { HttpError } from '../utils/http-error.ts';
 import { db } from '../utils/prisma.ts';
+import { confirmedCount, lockEvent, promoteWaitlist, registrationSummaries, seatTransaction, sendRegistrationNotices } from './registration.service.ts';
 import type { eventCreate, eventPatch, eventQuery } from '../validators/events.ts';
 
 type Actor = { id: string; role: Role };
@@ -9,8 +10,14 @@ type Query = z.output<typeof eventQuery>;
 type Fields = z.output<typeof eventCreate>;
 type Patch = z.output<typeof eventPatch>;
 
-function withSeats(event: Event) {
-  return { ...event, seatsLeft: event.capacity };
+async function withSeats(events: Event[], userId: string, tx?: Prisma.TransactionClient) {
+  const summaries = await registrationSummaries(events.map(({ id }) => id), userId, tx);
+  return events.flatMap((event) => {
+    const summary = summaries.get(event.id);
+    if (!summary) return [];
+    const { seatsLeft, myRegistrationStatus, myWaitlistPosition } = summary;
+    return [{ ...event, seatsLeft, myRegistrationStatus, myWaitlistPosition }];
+  });
 }
 
 function visibility(actor: Actor): Prisma.EventWhereInput {
@@ -27,7 +34,7 @@ export async function createEvent(actor: Actor, fields: Fields) {
   const event = await db().event.create({
     data: { ...fields, organizerId: actor.id, status: actor.role === 'ADMIN' ? 'APPROVED' : 'PENDING' },
   });
-  return withSeats(event);
+  return (await withSeats([event], actor.id))[0];
 }
 
 export async function listEvents(actor: Actor, query: Query, mine: boolean) {
@@ -52,13 +59,14 @@ export async function listEvents(actor: Actor, query: Query, mine: boolean) {
     skip: (page - 1) * pageSize,
     take: pageSize + 1,
   });
-  return { events: rows.slice(0, pageSize).map(withSeats), page, pageSize, hasMore: rows.length > pageSize };
+  return { events: await withSeats(rows.slice(0, pageSize), actor.id), page, pageSize, hasMore: rows.length > pageSize };
 }
 
 export async function getEvent(actor: Actor, id: string) {
   const event = await db().event.findFirst({ where: { id, ...visibility(actor) } });
-  if (!event) throw new HttpError(404, 'Event not found.');
-  return withSeats(event);
+  const [result] = event ? await withSeats([event], actor.id) : [];
+  if (!result) throw new HttpError(404, 'Event not found.');
+  return result;
 }
 
 function reviewFieldsChanged(event: Event, patch: Patch) {
@@ -73,10 +81,7 @@ function reviewFieldsChanged(event: Event, patch: Patch) {
 }
 
 async function lockOwnedEvent(tx: Prisma.TransactionClient, actor: Actor, id: string) {
-  // Lock the current row so parallel edits validate the same start/end pair they update.
-  await tx.$queryRaw`SELECT id FROM "Event" WHERE id = ${id}::uuid FOR UPDATE`;
-  const event = await tx.event.findUnique({ where: { id } });
-  if (!event) throw new HttpError(404, 'Event not found.');
+  const event = await lockEvent(tx, id);
   if (actor.role !== 'ADMIN' && event.organizerId !== actor.id) {
     if (event.status !== 'APPROVED' || event.startsAt < new Date()) throw new HttpError(404, 'Event not found.');
     throw new HttpError(403, 'Only the owner or an admin can manage this event.');
@@ -85,20 +90,30 @@ async function lockOwnedEvent(tx: Prisma.TransactionClient, actor: Actor, id: st
 }
 
 export async function updateEvent(actor: Actor, id: string, patch: Patch) {
-  return db().$transaction(async (tx) => {
+  const { event, notices } = await db().$transaction(async (tx) => {
     const current = await lockOwnedEvent(tx, actor, id);
     checkTimes(patch.startsAt ?? current.startsAt, patch.endsAt ?? current.endsAt);
     const needsReview = actor.role !== 'ADMIN' && current.status === 'APPROVED' && reviewFieldsChanged(current, patch);
-    return withSeats(await tx.event.update({
+    const capacity = patch.capacity ?? current.capacity;
+    const confirmed = capacity !== current.capacity ? await confirmedCount(tx, id) : 0;
+    if (capacity < confirmed) {
+      throw new HttpError(409, 'Capacity cannot be lower than the confirmed registration count.');
+    }
+    const event = await tx.event.update({
       where: { id },
       data: { ...patch, ...(needsReview && { status: 'PENDING', rejectionReason: null }) },
-    }));
-  });
+    });
+    const notices = event.capacity > current.capacity ? await promoteWaitlist(tx, id, event.capacity - confirmed) : [];
+    const [result] = await withSeats([event], actor.id, tx);
+    return { event: result, notices };
+  }, seatTransaction);
+  sendRegistrationNotices(notices);
+  return event;
 }
 
 export async function deleteEvent(actor: Actor, id: string) {
   await db().$transaction(async (tx) => {
     await lockOwnedEvent(tx, actor, id);
     await tx.event.delete({ where: { id } });
-  });
+  }, seatTransaction);
 }

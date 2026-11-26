@@ -29,6 +29,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   refreshTokens           RefreshToken[]
   events                  Event[]
+  registrations           Registration[]
 }
 
 model EmailVerificationToken {
@@ -98,8 +99,31 @@ model Event {
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
   organizer       User          @relation(fields: [organizerId], references: [id])
 
+  registrations   Registration[]
+
   @@index([status])
   @@index([startsAt])
   @@index([category])
   @@index([organizerId])
+}
+
+enum RegistrationStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+}
+
+model Registration {
+  id          String             @id @default(uuid()) @db.Uuid
+  userId      String             @db.Uuid
+  eventId     String             @db.Uuid
+  status      RegistrationStatus
+  queuedAt    DateTime           @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  cancelledAt DateTime?          @db.Timestamptz(3)
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([eventId, status, queuedAt, id])
 }

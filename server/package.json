@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "seed": "node --env-file-if-exists=.env src/seed.ts",
+    "demo:no-lock": "node --env-file-if-exists=.env src/demo-no-lock.ts",
     "test": "vitest run --config vitest.config.ts",
     "db:deploy": "prisma migrate deploy --config prisma7.config.ts",
     "postinstall": "npm run db:generate",

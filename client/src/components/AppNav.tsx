@@ -4,6 +4,7 @@ const links = [
   { to: '/', label: 'Home', icon: '⌂' },
   { to: '/events', label: 'Events', icon: '▦' },
   { to: '/events/mine', label: 'My Events', icon: '◫' },
+  { to: '/registrations/mine', label: 'My Registrations', icon: '✓' },
 ];
 
 export function AppNav() {
@@ -15,7 +16,7 @@ export function AppNav() {
           <span className="mr-auto hidden font-semibold md:block">CampusConnect</span>
           {links.map(({ to, label, icon }) => (
             <NavLink key={to} to={to} end={to !== '/events' || pathname === '/events/mine'}
-              className={({ isActive }) => `flex min-h-11 flex-1 flex-col items-center justify-center rounded-xl px-3 text-xs font-semibold md:flex-none md:flex-row md:gap-2 md:text-sm ${isActive ? 'bg-primary-tint text-primary-hover' : 'text-text hover:bg-background'}`}>
+              className={({ isActive }) => `flex min-h-11 flex-1 flex-col items-center justify-center rounded-xl px-1 text-center text-xs md:px-3 font-semibold md:flex-none md:flex-row md:gap-2 md:text-sm ${isActive ? 'bg-primary-tint text-primary-hover' : 'text-text hover:bg-background'}`}>
               <span className="text-base leading-tight" aria-hidden="true">{icon}</span>{label}
             </NavLink>
           ))}

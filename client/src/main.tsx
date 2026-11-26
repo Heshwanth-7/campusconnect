@@ -1,3 +1,4 @@
+import { MyRegistrations } from './pages/MyRegistrations';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
@@ -34,6 +35,7 @@ createRoot(root).render(
             <Route element={<AppNav />}>
               <Route path="/" element={<Home />} />
               <Route path="/events" element={<Events key="all" />} />
+              <Route path="/registrations/mine" element={<MyRegistrations />} />
               <Route path="/events/mine" element={<Events key="mine" mine />} />
               <Route path="/events/:id" element={<EventDetail />} />
               {/* Auth: event owner or admin. */}

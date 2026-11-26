@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { registrationStatus } from './registrations';
 import { apiRequest } from './client';
 import { EVENT_CATEGORIES, INTERESTS } from '../lib/event-constants';
 
@@ -16,6 +17,8 @@ const event = z.object({
   endsAt: z.iso.datetime(),
   capacity: z.number(),
   seatsLeft: z.number(),
+  myRegistrationStatus: registrationStatus.nullable(),
+  myWaitlistPosition: z.number().nullable(),
   clubName: z.string(),
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
   rejectionReason: z.string().nullable(),
