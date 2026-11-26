@@ -118,6 +118,8 @@ model Registration {
   userId      String             @db.Uuid
   eventId     String             @db.Uuid
   status      RegistrationStatus
+  qrNonce     String?            @db.Uuid
+  checkedInAt DateTime?          @db.Timestamptz(3)
   queuedAt    DateTime           @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
   cancelledAt DateTime?          @db.Timestamptz(3)
   createdAt   DateTime           @default(now()) @db.Timestamptz(3)

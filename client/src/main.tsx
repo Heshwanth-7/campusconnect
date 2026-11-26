@@ -1,3 +1,5 @@
+import { Ticket, Attendance } from './pages/TicketAttendance';
+import { Scanner } from './pages/Scanner';
 import { MyRegistrations } from './pages/MyRegistrations';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -35,6 +37,7 @@ createRoot(root).render(
             <Route element={<AppNav />}>
               <Route path="/" element={<Home />} />
               <Route path="/events" element={<Events key="all" />} />
+              <Route path="/registrations/:id/ticket" element={<Ticket />} />
               <Route path="/registrations/mine" element={<MyRegistrations />} />
               <Route path="/events/mine" element={<Events key="mine" mine />} />
               <Route path="/events/:id" element={<EventDetail />} />
@@ -42,6 +45,8 @@ createRoot(root).render(
               <Route path="/events/:id/edit" element={<EventForm />} />
               {/* Auth: organizer or admin. */}
               <Route element={<RoleRoute roles={['ORGANIZER', 'ADMIN']} />}>
+                <Route path="/events/:id/scanner" element={<Scanner />} />
+                <Route path="/events/:id/attendance" element={<Attendance />} />
                 <Route path="/events/new" element={<EventForm />} />
               </Route>
             </Route>

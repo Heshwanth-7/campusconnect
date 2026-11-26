@@ -48,6 +48,7 @@ export function MyRegistrations() {
             <p className="break-words text-sm text-muted"><time dateTime={item.event.startsAt}>{formatEventTime(item.event.startsAt)}</time> · {item.event.venue}</p>
             <div className="flex flex-wrap items-center gap-2">
               <span role="status"><RegistrationStatus status={item.status} position={item.waitlistPosition} /></span>
+              {item.status === 'CONFIRMED' && <Link className="secondary-button inline-flex" to={`/registrations/${item.id}/ticket`}>View ticket</Link>}
               {item.status !== 'CANCELLED' && <button className="secondary-button" disabled={Boolean(cancelling)}
                 onClick={() => void cancel(item)}>{cancelling === item.id ? 'Cancelling…' : 'Cancel registration'}</button>}
             </div>

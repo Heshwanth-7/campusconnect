@@ -84,7 +84,8 @@ export async function registrationSummaries(eventIds: string[], userId: string, 
 
 async function resultFor(tx: Prisma.TransactionClient, registration: Registration) {
   const summaries = await registrationSummaries([registration.eventId], registration.userId, tx);
-  return { registration, ...summaries.get(registration.eventId)! };
+  const { qrNonce: _nonce, ...publicRegistration } = registration;
+  return { registration: publicRegistration, ...summaries.get(registration.eventId)! };
 }
 
 export async function register(userId: string, eventId: string) {
@@ -143,7 +144,7 @@ export async function cancel(userId: string, eventId: string) {
 
 export async function myRegistrations(userId: string) {
   const registrations = await db().registration.findMany({
-    where: { userId },
+    where: { userId }, omit: { qrNonce: true },
     orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     include: { event: { select: { id: true, title: true, startsAt: true, venue: true } } },
   });
@@ -157,14 +158,18 @@ export async function myRegistrations(userId: string) {
   });
 }
 
-export async function eventRegistrations(eventId: string, user: { id: string; role: string }) {
+export async function requireEventManager(eventId: string, user: { id: string; role: string }) {
   const event = await db().event.findUnique({ where: { id: eventId }, select: { organizerId: true } });
   if (!event) throw new HttpError(404, 'Event not found.');
   if (user.role !== 'ADMIN' && (user.role !== 'ORGANIZER' || event.organizerId !== user.id)) {
-    throw new HttpError(403, 'Only the event organizer or an admin can view registrations.');
+    throw new HttpError(403, 'Only the event organizer or an admin can manage check-in and registrations.');
   }
+}
+
+export async function eventRegistrations(eventId: string, user: { id: string; role: string }) {
+  await requireEventManager(eventId, user);
   const registrations = await db().registration.findMany({
-    where: { eventId }, orderBy: queue, include: { user: { select: { id: true, name: true } } },
+    where: { eventId }, omit: { qrNonce: true }, orderBy: queue, include: { user: { select: { id: true, name: true } } },
   });
   const counts = { CONFIRMED: 0, WAITLISTED: 0, CANCELLED: 0 };
   const rows = registrations.map((row) => {

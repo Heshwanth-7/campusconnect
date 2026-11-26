@@ -9,7 +9,7 @@ const vite = join(dirname(requireFromClient.resolve('vite/package.json')), 'bin'
 
 const processes = [
   spawn(process.execPath, ['--env-file-if-exists=.env', '--watch', 'src/server.ts'], { cwd: server, stdio: 'inherit' }),
-  spawn(process.execPath, [vite], { cwd: client, stdio: 'inherit' }),
+  spawn(process.execPath, [vite, ...(process.argv.includes('--https') ? ['--mode', 'https', '--host', '0.0.0.0'] : [])], { cwd: client, stdio: 'inherit' }),
 ];
 
 let stopping = false;

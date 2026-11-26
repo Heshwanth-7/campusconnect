@@ -96,6 +96,8 @@ export function EventDetail() {
               </button>
             )}
             {canManage && <>
+              <Link className="secondary-button inline-flex" to={`/events/${event.id}/scanner`}>Scan tickets</Link>
+              <Link className="secondary-button inline-flex" to={`/events/${event.id}/attendance`}>Attendance</Link>
               <Link className="secondary-button inline-flex" to={`/events/${event.id}/edit`}>Edit event</Link>
               <button className="secondary-button text-danger" disabled={deleting} onClick={() => void remove()}>
                 {deleting ? 'Deleting…' : 'Delete event'}
