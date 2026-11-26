@@ -65,7 +65,7 @@ export async function apiRequest(
   const request: RequestInit = {
     method,
     credentials: 'include',
-    ...(body && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    ...(body instanceof FormData ? { body } : body && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   };
   // Finish any in-flight rotation before setting or clearing session cookies.
   if (path === '/auth/login' || path === '/auth/logout') await renewal;

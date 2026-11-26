@@ -28,6 +28,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   refreshTokens           RefreshToken[]
+  lostFoundPosts          LostFoundPost[]
   events                  Event[]
   registrations           Registration[]
 }
@@ -128,4 +129,69 @@ model Registration {
 
   @@unique([userId, eventId])
   @@index([eventId, status, queuedAt, id])
+}
+
+enum PostType {
+  LOST
+  FOUND
+}
+
+enum ItemCategory {
+  BOTTLE
+  BAG
+  ID_CARD
+  ELECTRONICS
+  BOOK
+  CLOTHING
+  KEYS
+  OTHER
+}
+
+enum PostStatus {
+  OPEN
+  MATCHED
+  RESOLVED
+}
+
+enum MatchStatus {
+  SUGGESTED
+  CONFIRMED
+  DISMISSED
+}
+
+model LostFoundPost {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @db.Uuid
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         PostType
+  title        String
+  description  String
+  category     ItemCategory
+  color        String
+  location     String
+  occurredAt   DateTime      @db.Date
+  imagePath    String?
+  status       PostStatus    @default(OPEN)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  lostMatches  Match[]       @relation("LostSide")
+  foundMatches Match[]       @relation("FoundSide")
+
+  @@index([type, status, category, occurredAt])
+  @@index([userId, createdAt])
+}
+
+model Match {
+  id                   String        @id @default(uuid()) @db.Uuid
+  lostPostId           String        @db.Uuid
+  foundPostId          String        @db.Uuid
+  lostPost             LostFoundPost @relation("LostSide", fields: [lostPostId], references: [id], onDelete: Cascade)
+  foundPost            LostFoundPost @relation("FoundSide", fields: [foundPostId], references: [id], onDelete: Cascade)
+  score                Int
+  status               MatchStatus   @default(SUGGESTED)
+  lostUserConfirmedAt  DateTime?     @db.Timestamptz(3)
+  foundUserConfirmedAt DateTime?     @db.Timestamptz(3)
+  createdAt            DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@unique([lostPostId, foundPostId])
+  @@index([foundPostId])
 }

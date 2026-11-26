@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/api(?:[/?]|$)/],
+        navigateFallbackDenylist: [/^\/(?:api|uploads)(?:[/?]|$)/],
         runtimeCaching: [],
       },
     }),
@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     strictPort: true,
     proxy: {
+      '/uploads': 'http://127.0.0.1:3000',
       '/api': 'http://127.0.0.1:3000',
     },
   },

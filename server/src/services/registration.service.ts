@@ -7,6 +7,7 @@
 import { Prisma } from '../generated/prisma/client.ts';
 import type { Event, Registration, RegistrationStatus } from '../generated/prisma/client.ts';
 import { HttpError } from '../utils/http-error.ts';
+import { notifyUser } from './notify-user.ts';
 import { db } from '../utils/prisma.ts';
 
 export const seatTransaction = {
@@ -29,10 +30,6 @@ export function confirmedCount(tx: Prisma.TransactionClient, eventId: string) {
 }
 
 type Notice = { userId: string; type: 'confirmed' | 'waitlisted' | 'cancelled' | 'promoted'; eventId: string };
-
-function notifyUser(userId: string, type: Notice['type'], payload: { eventId: string }) {
-  console.log('Registration notification', userId, type, payload);
-}
 
 export function sendRegistrationNotices(notices: Notice[]) {
   for (const { userId, type, eventId } of notices) notifyUser(userId, type, { eventId });

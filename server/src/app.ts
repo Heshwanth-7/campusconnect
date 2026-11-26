@@ -9,11 +9,19 @@ import { healthRouter } from './routes/health.ts';
 
 import { checkinRouter } from './routes/checkin.ts';
 
+import { postsRouter, matchesRouter } from './routes/lostfound.ts';
+import { uploadDir } from './services/item-photo.ts';
+import { requireAuth } from './middleware/require-auth.ts';
+
 export const app = express();
 
 app.use(helmet());
 app.use(requireClientOrigin);
 app.use(express.json({ limit: '16kb' }));
+// Auth: signed-in students can view item photos. Helmet sets X-Content-Type-Options: nosniff.
+app.use('/uploads', requireAuth, express.static(uploadDir, { index: false, cacheControl: false }));
+app.use('/api/lostfound', postsRouter);
+app.use('/api/matches', matchesRouter);
 app.use('/api', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/checkin', checkinRouter);

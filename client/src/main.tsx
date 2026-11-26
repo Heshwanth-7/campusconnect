@@ -1,4 +1,7 @@
 import { Ticket, Attendance } from './pages/TicketAttendance';
+import { LostFound } from './pages/LostFound';
+import { PostItem } from './pages/PostItem';
+import { PossibleMatches } from './pages/PossibleMatches';
 import { Scanner } from './pages/Scanner';
 import { MyRegistrations } from './pages/MyRegistrations';
 import { StrictMode } from 'react';
@@ -36,6 +39,9 @@ createRoot(root).render(
           <Route element={<ProtectedRoute />}>
             <Route element={<AppNav />}>
               <Route path="/" element={<Home />} />
+              <Route path="/lostfound" element={<LostFound />} />
+              <Route path="/lostfound/new" element={<PostItem />} />
+              <Route path="/lostfound/matches" element={<PossibleMatches />} />
               <Route path="/events" element={<Events key="all" />} />
               <Route path="/registrations/:id/ticket" element={<Ticket />} />
               <Route path="/registrations/mine" element={<MyRegistrations />} />
