@@ -2,7 +2,7 @@ import { sendMail } from './mail.ts';
 
 export async function sendAuthEmail(email: string, purpose: 'verify-email' | 'reset-password', token: string) {
   const link = new URL(`/${purpose}`, process.env.CLIENT_URL);
-  link.searchParams.set('token', token);
+  link.hash = new URLSearchParams({ token }).toString();
   const action = purpose === 'verify-email' ? 'Verify your email' : 'Reset your password';
   await sendMail({
     to: email,

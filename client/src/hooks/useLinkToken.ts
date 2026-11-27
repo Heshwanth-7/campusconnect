@@ -5,12 +5,12 @@ import { linkToken } from '../lib/auth-forms';
 export function useLinkToken() {
   const [params, setParams] = useSearchParams();
   const [token] = useState(() => {
-    const result = linkToken.safeParse(params.get('token'));
+    const result = linkToken.safeParse(new URLSearchParams(window.location.hash.slice(1)).get('token') ?? params.get('token'));
     return result.success ? result.data : null;
   });
 
   useEffect(() => {
-    if (!params.has('token')) return;
+    if (!params.has('token') && !new URLSearchParams(window.location.hash.slice(1)).has('token')) return;
     const sanitized = new URLSearchParams(params);
     sanitized.delete('token');
     setParams(sanitized, { replace: true });

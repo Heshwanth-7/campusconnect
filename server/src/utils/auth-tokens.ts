@@ -23,12 +23,16 @@ const claims = z.object({
   exp: z.number().int(),
 });
 
-function sign(data: string) {
+export function accessSecret() {
   const secret = process.env.JWT_ACCESS_SECRET;
-  if (!secret || Buffer.byteLength(secret) < 32) {
-    throw new Error('JWT_ACCESS_SECRET must contain at least 32 bytes.');
+  if (!secret || Buffer.byteLength(secret) < 32 || secret === 'replace-with-a-unique-access-secret') {
+    throw new Error('JWT_ACCESS_SECRET must be a private key of at least 32 bytes.');
   }
-  return createHmac('sha256', secret).update(data).digest();
+  return secret;
+}
+
+function sign(data: string) {
+  return createHmac('sha256', accessSecret()).update(data).digest();
 }
 
 export function makeAccessToken(userId: string, now: Date) {

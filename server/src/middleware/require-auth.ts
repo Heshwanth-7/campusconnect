@@ -17,6 +17,7 @@ export const publicUserFields = {
 } as const;
 
 export const requireAuth: RequestHandler = async (request, response, next) => {
+  response.set('Cache-Control', 'private, no-store');
   const token = readAccessCookie(request);
   const userId = token && accessTokenUserId(token);
   if (!userId) throw new HttpError(401, 'Authentication required.');

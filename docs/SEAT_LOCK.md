@@ -6,7 +6,7 @@ Imagine two students click Register when one seat is left. If both requests coun
 
 Every registration, cancellation, and capacity edit first locks the same PostgreSQL event row with `SELECT … FROM "Event" … FOR UPDATE`. Another write for that event waits for the transaction to finish. The next request then counts the confirmed rows again and sees the previous request's committed changes. Requests for different events lock different rows.
 
-If all seats are taken, the student joins the waitlist. A confirmed cancellation gives the seat to the first waiting student, ordered by queue time and then registration ID. Increasing capacity fills the new seats in that order. A student who cancels and rejoins keeps the same registration ID and gets a fresh queue time. The API rejects capacity below the confirmed count. Notification stubs run after commit, when the lock has already been released.
+If all seats are taken, the student joins the waitlist. A confirmed cancellation gives the seat to the first waiting student, ordered by queue time and then registration ID. Increasing capacity fills the new seats in that order. A student who cancels and rejoins keeps the same registration ID and gets a fresh queue time. The API rejects capacity below the confirmed count. Notifications are sent after commit, when the lock has already been released.
 
 ## Run the proof
 

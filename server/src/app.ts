@@ -2,6 +2,9 @@ import { adminRouter } from './routes/admin.ts';
 import { feedRouter } from './routes/feed.ts';
 import { notificationsRouter } from './routes/notifications.ts';
 import express from 'express';
+import { z } from 'zod';
+import { db } from './utils/prisma.ts';
+import { visibility } from './services/events.ts';
 import helmet from 'helmet';
 import { errorHandler } from './middleware/error-handler.ts';
 import { requireClientOrigin } from './middleware/csrf.ts';
@@ -21,8 +24,19 @@ export const app = express();
 app.use(helmet());
 app.use(requireClientOrigin);
 app.use(express.json({ limit: '16kb' }));
-// Auth: signed-in students can view item photos. Helmet sets X-Content-Type-Options: nosniff.
-app.use('/uploads', requireAuth, express.static(uploadDir, { index: false, cacheControl: false }));
+// Auth: campus item photos and posters of events visible to the viewer.
+app.get('/uploads/:filename', requireAuth, async (req, res) => {
+  const filename = z.string().regex(/^[a-f0-9-]{36}\.(jpg|png|webp)$/).parse(req.params.filename);
+  const path = '/uploads/' + filename;
+  const item = await db().lostFoundPost.findFirst({ where: { imagePath: path }, select: { id: true } });
+  if (!item) {
+    const event = await db().event.findFirst({
+      where: { ...visibility(res.locals.user), posterImagePath: path }, select: { id: true },
+    });
+    if (!event) return res.sendStatus(404);
+  }
+  res.sendFile(filename, { root: uploadDir, cacheControl: false });
+});
 app.use('/api/admin', adminRouter);
 app.use('/api/lostfound', postsRouter);
 app.use('/api/matches', matchesRouter);

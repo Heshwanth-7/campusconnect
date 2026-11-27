@@ -19,7 +19,7 @@ The shared-word fraction is called Jaccard similarity. Repeating a word adds no 
 
 ## What happens next
 
-A score at or above MATCH_THRESHOLD (60 by default) creates a suggestion. The example scores 94, so both students receive a notification through the stub after the database saves it. Both posts stay open for other candidates.
+A score at or above MATCH_THRESHOLD (60 by default) creates a suggestion. The example scores 94, so both students receive a notification after the database saves it. Both posts stay open for other candidates.
 
 Each student can confirm only their side. One confirmation keeps contact details hidden. The second confirmation marks both posts matched and lets each student see the other’s name and college email. Competing suggestions close at the same time. A transaction keeps simultaneous replies consistent.
 

@@ -27,7 +27,7 @@ export function Resource<T>({ path, schema, children }: {
 }
 
 export function Table({ headings, children, empty }: { headings: string[]; children: ReactNode; empty: boolean }) {
-  return <div className="admin-table" tabIndex={0} aria-label="Scrollable results" role="region"><table>
+  return <div className="admin-table" tabIndex={0} aria-label="Results" role="region"><table>
     <thead><tr>{headings.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
     <tbody>{children}{empty && <tr><td colSpan={headings.length}>No results.</td></tr>}</tbody>
   </table></div>;

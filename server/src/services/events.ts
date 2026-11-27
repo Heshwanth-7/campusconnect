@@ -23,7 +23,7 @@ async function withSeats(events: Event[], userId: string, tx?: Prisma.Transactio
   });
 }
 
-function visibility(actor: Actor): Prisma.EventWhereInput {
+export function visibility(actor: Actor): Prisma.EventWhereInput {
   if (actor.role === 'ADMIN') return {};
   return { OR: [{ organizerId: actor.id }, { status: 'APPROVED', startsAt: { gte: new Date() } }] };
 }

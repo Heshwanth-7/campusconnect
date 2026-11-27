@@ -171,8 +171,10 @@ test('only the owner or admin can attach, replace and remove the event poster', 
   const admin = await client('ADMIN', 'post', poster).attach('poster', posterPng, 'original.png').expect(200);
   expect(admin.body.posterImagePath).not.toBe(first);
   const view = (file: string) => request(app).get(file).set('Cookie', 'access_token=' + makeAccessToken(ids.get('ADMIN')!, new Date()));
+  const studentCookie = 'access_token=' + makeAccessToken(ids.get('STUDENT')!, new Date());
+  await request(app).get(admin.body.posterImagePath).set('Cookie', studentCookie).expect(404);
   await view(first).expect(404);
-  await view(admin.body.posterImagePath).expect(200).expect('X-Content-Type-Options', 'nosniff');
+  await view(admin.body.posterImagePath).expect(200).expect('X-Content-Type-Options', 'nosniff').expect('Cache-Control', /no-store/);
   expect((await client('ADMIN', 'get', path)).body.event.posterImagePath).toBe(admin.body.posterImagePath);
   await client('ADMIN', 'delete', poster).expect(204);
   expect((await client('ADMIN', 'get', path)).body.event.posterImagePath).toBeNull();

@@ -23,9 +23,9 @@ export function EventList({ queue, ask }: { queue: boolean; ask: Ask }) {
   const path = '/admin/events?page=' + page + (queue ? '&status=PENDING' : '');
   return <Resource key={path} path={path} schema={api.events}>{data => <>
     <Table headings={['Event', 'Club', 'Status', 'Actions']} empty={!data.rows.length}>{data.rows.map(e =>
-      <tr key={e.id}><td><Link className="auth-link" to={'/events/' + e.id}>{e.title}</Link>
-        <small>{e.venue} · {new Date(e.startsAt).toLocaleDateString()}</small></td><td>{e.clubName}</td><td><EventStatusBadge status={e.status} /></td>
-        <td><div className="flex gap-2">{queue ? <>
+      <tr key={e.id}><td data-label="Event"><Link className="auth-link" to={'/events/' + e.id}>{e.title}</Link>
+        <small>{e.venue} · {new Date(e.startsAt).toLocaleDateString()}</small></td><td data-label="Club">{e.clubName}</td><td data-label="Status"><EventStatusBadge status={e.status} /></td>
+        <td data-label="Actions"><div className="flex gap-2">{queue ? <>
           <button className="secondary-button" onClick={() => ask({ title: 'Approve event', detail: e.title, method: 'POST', path: '/events/' + e.id + '/approve' })}>Approve</button>
           <button className="secondary-button" onClick={() => ask({ title: 'Reject event', detail: e.title, reason: true, method: 'POST', path: '/events/' + e.id + '/reject' })}>Reject</button></> :
           <button className="secondary-button" onClick={() => ask({ title: 'Delete event', detail: 'Permanently remove “' + e.title + '” and its registrations.', method: 'DELETE', path: '/events/' + e.id })}>Delete</button>}</div></td></tr>)}</Table>
@@ -37,8 +37,8 @@ function PostList({ ask }: { ask: Ask }) {
   const path = '/lostfound?page=' + page;
   return <Resource key={path} path={path} schema={api.posts}>{data => <>
     <Table headings={['Item', 'Location', 'Status', 'Actions']} empty={!data.posts.length}>{data.posts.map(p =>
-      <tr key={p.id}><td>{p.title}<small>{label(p.type)}</small></td><td>{p.location}</td><td>{p.status === 'OPEN' ? '○' : '✓'} {label(p.status)}</td>
-        <td><button className="secondary-button" onClick={() => ask({ title: 'Delete item', detail: 'Permanently remove “' + p.title + '”.', path: '/lostfound/' + p.id, method: 'DELETE' })}>Delete</button></td></tr>)}</Table>
+      <tr key={p.id}><td data-label="Item">{p.title}<small>{label(p.type)}</small></td><td data-label="Location">{p.location}</td><td data-label="Status">{p.status === 'OPEN' ? '○' : '✓'} {label(p.status)}</td>
+        <td data-label="Actions"><button className="secondary-button" onClick={() => ask({ title: 'Delete item', detail: 'Permanently remove “' + p.title + '”.', path: '/lostfound/' + p.id, method: 'DELETE' })}>Delete</button></td></tr>)}</Table>
     <Pager page={page} go={go} more={data.hasMore} /></>}</Resource>;
 }
 export function Content({ ask }: { ask: Ask }) {
@@ -59,11 +59,11 @@ export function Users({ ask }: { ask: Ask }) {
     <button className="secondary-button">Search</button></form>
     <Resource key={path} path={path} schema={api.users}>{data => <>
       <Table headings={['User', 'Role', 'Account status', 'Actions']} empty={!data.rows.length}>{data.rows.map(u =>
-        <tr key={u.id}><td>{u.name}<small>{u.email}</small></td><td><select aria-label={'Role for ' + u.name} className="auth-input"
+        <tr key={u.id}><td data-label="User">{u.name}<small>{u.email}</small></td><td data-label="Role"><select aria-label={'Role for ' + u.name} className="auth-input"
           disabled={u.id === user?.id} value={u.role} onChange={e => ask({ title: 'Change role', detail: 'Change ' + u.email + ' from ' + label(u.role) + ' to ' + label(e.target.value) + '.',
             path: '/users/' + u.id + '/role', method: 'PATCH', body: { role: e.target.value } })}>
           {userRole.options.map(role => <option key={role} value={role}>{label(role)}</option>)}</select></td>
-          <td>{u.blockedAt ? '⊘ Blocked' : '✓ Active'}</td><td><button className="secondary-button" disabled={u.id === user?.id} onClick={() => ask({
+          <td data-label="Account status">{u.blockedAt ? '⊘ Blocked' : '✓ Active'}</td><td data-label="Actions"><button className="secondary-button" disabled={u.id === user?.id} onClick={() => ask({
             title: u.blockedAt ? 'Unblock user' : 'Block user', detail: u.blockedAt ? 'Restore access for ' + u.email + '.' : 'Revoke sessions and block access for ' + u.email + '.',
             path: '/users/' + u.id + (u.blockedAt ? '/unblock' : '/block'), method: 'POST',
           })}>{u.blockedAt ? 'Unblock' : 'Block'}</button></td></tr>)}</Table><Pager page={page} go={go} more={data.hasMore} /></>}</Resource></>;
@@ -88,7 +88,7 @@ export function AuditLog() {
     <button className="secondary-button" disabled={!!actor.trim() && !z.uuid().safeParse(actor.trim()).success}>Apply filters</button></form>
     <Resource key={path} path={path} schema={api.auditLog}>{data => <>
       <Table headings={['Time', 'Action', 'Actor', 'Target', 'Details']} empty={!data.rows.length}>{data.rows.map(row =>
-        <tr key={row.id}><td>{new Date(row.createdAt).toLocaleString()}</td><td>{label(row.action)}</td><td>{row.actorName}<small>{row.actorId}</small></td>
-          <td>{row.targetType}<small>{row.targetId}</small></td><td>{Object.entries(row.metadata).filter(([,v]) => v != null)
+        <tr key={row.id}><td data-label="Time">{new Date(row.createdAt).toLocaleString()}</td><td data-label="Action">{label(row.action)}</td><td data-label="Actor">{row.actorName}<small>{row.actorId}</small></td>
+          <td data-label="Target">{row.targetType}<small>{row.targetId}</small></td><td data-label="Details">{Object.entries(row.metadata).filter(([,v]) => v != null)
             .map(([k,v]) => <div key={k}>{k} · {String(v)}</div>)}</td></tr>)}</Table><Pager page={page} go={go} more={data.hasMore} /></>}</Resource></>;
 }
