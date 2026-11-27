@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { authAction, getCurrentUser } from '../api/auth';
+import { authAction, getCurrentUser, patchInterests } from '../api/auth';
 import type { User } from '../api/auth';
 import { ApiError, onSessionLost } from '../api/client';
 
@@ -11,6 +11,7 @@ type Session =
 type Auth = Session & {
   reload: () => Promise<void>;
   signIn: (credentials: { email: string; password: string }) => Promise<void>;
+  saveInterests: (interests: User['interests']) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -51,13 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function saveInterests(interests: User['interests']) {
+    const updated = await patchInterests(interests);
+    setSession(current => current.user?.id === updated.id ? { status: 'authenticated', user: updated } : current);
+  }
+
   async function signOut() {
     await authAction('logout');
     setSession({ status: 'anonymous', user: null });
   }
 
   return (
-    <AuthContext.Provider value={{ ...session, reload, signIn, signOut }}>
+    <AuthContext.Provider value={{ ...session, reload, signIn, signOut, saveInterests }}>
       {children}
     </AuthContext.Provider>
   );

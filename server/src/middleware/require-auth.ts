@@ -10,6 +10,8 @@ export const publicUserFields = {
   name: true,
   email: true,
   role: true,
+  interests: true,
+  interestsOnboarded: true,
   emailVerifiedAt: true,
   createdAt: true,
 } as const;

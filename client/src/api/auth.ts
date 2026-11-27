@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { INTERESTS } from '../lib/event-constants';
 import { apiRequest } from './client';
 
 export const userRole = z.enum(['STUDENT', 'ORGANIZER', 'ADMIN']);
@@ -10,12 +11,18 @@ const currentUser = z.object({
     name: z.string(),
     email: z.email(),
     role: userRole,
+    interests: z.array(z.enum(INTERESTS)),
+    interestsOnboarded: z.boolean(),
   }),
 });
 export type User = z.infer<typeof currentUser>['user'];
 
 export async function getCurrentUser() {
   return currentUser.parse(await apiRequest('/auth/me')).user;
+}
+
+export async function patchInterests(interests: User['interests']) {
+  return currentUser.parse(await apiRequest('/users/me/interests', { method: 'PATCH', body: { interests } })).user;
 }
 
 export function authAction(action: string, body?: object) {

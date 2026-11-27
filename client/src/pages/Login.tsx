@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { errorMessage, formResolver, loginForm } from '../lib/auth-forms';
 
 export function Login() {
-  const { status, signIn } = useAuth();
+  const { status, user, signIn } = useAuth();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: formResolver(loginForm),
   });
@@ -30,7 +30,7 @@ export function Login() {
     return () => window.clearInterval(timer);
   }, [showCountdown]);
 
-  if (status === 'authenticated') return <Navigate to="/" replace />;
+  if (status === 'authenticated') return <Navigate to={user.interestsOnboarded ? '/' : '/onboarding'} replace />;
 
   function clearFeedback() {
     setFailure('');

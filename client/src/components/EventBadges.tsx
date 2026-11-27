@@ -31,7 +31,7 @@ export function EventStatusBadge({ status }: { status: CampusEvent['status'] }) 
   return <span className={`${badge} ${color}`}><span aria-hidden="true">{icon}</span>{label}</span>;
 }
 
-export function EventPoster({ event, full = false }: { event: CampusEvent; full?: boolean }) {
+export function EventPoster({ event, full = false }: { event: Pick<CampusEvent, 'title' | 'category' | 'posterImagePath'>; full?: boolean }) {
   if (!event.posterImagePath) {
     return <div aria-hidden="true" className="grid h-40 w-full place-items-center rounded-xl bg-slate-100 text-4xl text-muted">
       {categoryStyle[event.category].icon}

@@ -15,6 +15,7 @@ import { EventDetail } from './pages/EventDetail';
 import { EventForm } from './pages/EventForm';
 import { Events } from './pages/Events';
 import { ForgotPassword } from './pages/ForgotPassword';
+import { Profile } from './pages/Profile';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { ResetPassword } from './pages/ResetPassword';
@@ -38,7 +39,9 @@ createRoot(root).render(
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* Auth: signed in, any role. */}
           <Route element={<ProtectedRoute />}>
+            <Route path="/onboarding" element={<Profile onboarding />} />
             <Route element={<AppNav />}>
+              <Route path="/profile" element={<Profile />} />
               <Route path="/" element={<Home />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/lostfound" element={<LostFound />} />

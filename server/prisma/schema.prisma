@@ -21,6 +21,8 @@ model User {
   passwordHash            String
   role                    Role                     @default(STUDENT)
   emailVerifiedAt         DateTime?
+  interests               String[]                 @default([])
+  interestsOnboarded      Boolean                  @default(false)
   failedLoginCount        Int                      @default(0)
   lockedUntil             DateTime?
   blockedAt               DateTime?

@@ -61,3 +61,13 @@ export async function setPoster(id: string, poster: File | null) {
   body.set('poster', poster);
   return apiRequest(path, { method: 'POST', body });
 }
+
+const feedEvent = event.pick({
+  id: true, title: true, category: true, posterImagePath: true, clubName: true,
+  venue: true, startsAt: true, seatsLeft: true,
+}).extend({ score: z.number(), reasons: z.array(z.string()) });
+export type FeedEvent = z.infer<typeof feedEvent>;
+
+export async function getFeed() {
+  return z.object({ events: z.array(feedEvent) }).parse(await apiRequest('/feed')).events;
+}

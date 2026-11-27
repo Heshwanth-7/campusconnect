@@ -1,3 +1,4 @@
+import { feedRouter } from './routes/feed.ts';
 import { notificationsRouter } from './routes/notifications.ts';
 import express from 'express';
 import helmet from 'helmet';
@@ -23,6 +24,7 @@ app.use(express.json({ limit: '16kb' }));
 app.use('/uploads', requireAuth, express.static(uploadDir, { index: false, cacheControl: false }));
 app.use('/api/lostfound', postsRouter);
 app.use('/api/matches', matchesRouter);
+app.use('/api', feedRouter);
 app.use('/api', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/checkin', checkinRouter);
