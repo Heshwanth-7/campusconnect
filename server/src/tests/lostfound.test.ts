@@ -5,6 +5,8 @@ import { app } from '../app.ts';
 import { makeAccessToken } from '../utils/auth-tokens.ts';
 import { db } from '../utils/prisma.ts';
 
+vi.mock('../services/mail.ts', () => ({ sendMail: vi.fn(async () => {}) }));
+
 const origin = 'http://localhost:5173';
 const prefix = randomUUID();
 const users: { id: string; email: string; name: string }[] = [];
@@ -55,6 +57,8 @@ describe('lost and found', () => {
     }
     await api(1, 'post', path + '/confirm').expect(204);
     for (const i of [0, 1]) {
+      const notices = await db().notification.findMany({ where: { userId: users[i].id } });
+      expect(notices.map(notice => notice.type).sort()).toEqual(['MATCH_CONFIRMED', 'MATCH_FOUND']);
       const other = users[1 - i];
       expect((await mine(i)).body.matches[0]).toMatchObject({ status: 'CONFIRMED',
         lostPost: { status: 'MATCHED' }, foundPost: { status: 'MATCHED' }, contact: { name: other.name, email: other.email } });

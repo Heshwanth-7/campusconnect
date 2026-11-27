@@ -1,3 +1,4 @@
+import { notificationsRouter } from './routes/notifications.ts';
 import express from 'express';
 import helmet from 'helmet';
 import { errorHandler } from './middleware/error-handler.ts';
@@ -27,5 +28,6 @@ app.use('/api/auth', authRouter);
 app.use('/api/checkin', checkinRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/registrations', registrationsRouter);
+app.use('/api/notifications', notificationsRouter);
 app.use((_request, _response, next) => next({ status: 404 }));
 app.use(errorHandler);

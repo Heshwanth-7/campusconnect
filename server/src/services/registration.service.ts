@@ -29,13 +29,16 @@ export function confirmedCount(tx: Prisma.TransactionClient, eventId: string) {
   return tx.registration.count({ where: { eventId, status: 'CONFIRMED' } });
 }
 
-type Notice = { userId: string; type: 'confirmed' | 'waitlisted' | 'cancelled' | 'promoted'; eventId: string };
+type Notice = { userId: string; eventId: string; title: string };
 
-export function sendRegistrationNotices(notices: Notice[]) {
-  for (const { userId, type, eventId } of notices) notifyUser(userId, type, { eventId });
+export async function sendRegistrationNotices(notices: Notice[]) {
+  for (const { userId, eventId, title } of notices) {
+    await notifyUser(userId, 'WAITLIST_PROMOTED', { message: `You have a seat at ${title}.`, linkPath: '/events/' + eventId });
+  }
 }
 
-export async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string, seats: number): Promise<Notice[]> {
+export async function promoteWaitlist(tx: Prisma.TransactionClient, event: Pick<Event, 'id' | 'title'>, seats: number): Promise<Notice[]> {
+  const eventId = event.id;
   if (seats <= 0) return [];
   const waiting = await tx.registration.findMany({
     where: { eventId, status: 'WAITLISTED' },
@@ -49,7 +52,7 @@ export async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: str
       data: { status: 'CONFIRMED' },
     });
   }
-  return waiting.map(({ userId }) => ({ userId, type: 'promoted', eventId }));
+  return waiting.map(({ userId }) => ({ userId, title: event.title, eventId }));
 }
 
 type RegistrationSummary = {
@@ -86,7 +89,7 @@ async function resultFor(tx: Prisma.TransactionClient, registration: Registratio
 }
 
 export async function register(userId: string, eventId: string) {
-  const result = await db().$transaction(async (tx) => {
+  const { result, title } = await db().$transaction(async (tx) => {
     const event = await lockEvent(tx, eventId);
     if (event.status !== 'APPROVED' || (event.registrationDeadline ?? event.startsAt) <= new Date()) {
       throw new HttpError(409, 'Registration is closed for this event.');
@@ -101,7 +104,7 @@ export async function register(userId: string, eventId: string) {
     const registration = await tx.registration.upsert({
       where, create: { userId, eventId, status }, update: { status, cancelledAt: null },
     });
-    if (!previous && status === 'CONFIRMED') return resultFor(tx, registration);
+    if (!previous && status === 'CONFIRMED') return { result: await resultFor(tx, registration), title: event.title };
 
     // Use the database clock. If it ties or moves backwards, append after the current tail.
     const [queued] = await tx.$queryRaw<Registration[]>`
@@ -114,15 +117,17 @@ export async function register(userId: string, eventId: string) {
       ))
       WHERE id = ${registration.id}::uuid RETURNING *
     `;
-    return resultFor(tx, queued);
+    return { result: await resultFor(tx, queued), title: event.title };
   }, seatTransaction);
-  sendRegistrationNotices([{ userId, eventId, type: result.registration.status === 'CONFIRMED' ? 'confirmed' : 'waitlisted' }]);
+  if (result.registration.status === 'CONFIRMED') {
+    await notifyUser(userId, 'SEAT_CONFIRMED', { message: `Your seat at ${title} is confirmed.`, linkPath: '/events/' + eventId });
+  }
   return result;
 }
 
 export async function cancel(userId: string, eventId: string) {
   const { result, notices } = await db().$transaction(async (tx) => {
-    await lockEvent(tx, eventId);
+    const event = await lockEvent(tx, eventId);
     const where = { userId_eventId: { userId, eventId } };
     const previous = await tx.registration.findUnique({ where });
     if (!previous || previous.status === 'CANCELLED') {
@@ -131,11 +136,10 @@ export async function cancel(userId: string, eventId: string) {
     const registration = await tx.registration.update({
       where, data: { status: 'CANCELLED', cancelledAt: new Date() },
     });
-    const notices: Notice[] = [{ userId, eventId, type: 'cancelled' }];
-    if (previous.status === 'CONFIRMED') notices.push(...await promoteWaitlist(tx, eventId, 1));
+    const notices = previous.status === 'CONFIRMED' ? await promoteWaitlist(tx, event, 1) : [];
     return { result: await resultFor(tx, registration), notices };
   }, seatTransaction);
-  sendRegistrationNotices(notices);
+  await sendRegistrationNotices(notices);
   return result;
 }
 

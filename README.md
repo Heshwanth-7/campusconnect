@@ -75,3 +75,11 @@ On **Create event** or **Edit event**, choose a JPEG, PNG, or WebP poster up to 
 The event owner or an admin can send a multipart `poster` field to `POST /api/events/:id/poster` or remove it with `DELETE /api/events/:id/poster`. Event responses include the nullable `posterImagePath`. Posters use the Lost & Found upload service, which checks the file signature, generates a random filename and serves the image with `X-Content-Type-Options: nosniff`.
 
 Set **Registration deadline** to choose when sign-ups and new waitlist entries close. Leaving it blank uses the event start time. The create and edit APIs accept an ISO datetime with a timezone for `registrationDeadline`. Send `null` on edit to clear it. Once registration closes, the API returns HTTP 409.
+
+## Notifications
+
+The navbar bell opens your inbox. Opening a notification marks it read and takes you to its event or possible matches. The unread badge refreshes every 30 seconds while the tab is visible.
+
+Seat confirmations, waitlist promotions and lost-and-found matches also send email. The running API checks hourly for confirmed registrations with an event starting in the next 24 hours. Email failures leave the in-app notification available. The API retries pending mail every five minutes, up to three delivery attempts including the first.
+
+Apply the migration with `npm run db:deploy --workspace server` and start the API with `npm run dev`. Development email uses the SMTP settings in `server/.env.example`. Open [Mailpit](http://localhost:8025) to inspect the HTML and plain-text versions.

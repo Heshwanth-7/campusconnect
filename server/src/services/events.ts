@@ -105,11 +105,11 @@ export async function updateEvent(actor: Actor, id: string, patch: Patch) {
       where: { id },
       data: { ...patch, ...(needsReview && { status: 'PENDING', rejectionReason: null }) },
     });
-    const notices = event.capacity > current.capacity ? await promoteWaitlist(tx, id, event.capacity - confirmed) : [];
+    const notices = event.capacity > current.capacity ? await promoteWaitlist(tx, event, event.capacity - confirmed) : [];
     const [result] = await withSeats([event], actor.id, tx);
     return { event: result, notices };
   }, seatTransaction);
-  sendRegistrationNotices(notices);
+  await sendRegistrationNotices(notices);
   return event;
 }
 

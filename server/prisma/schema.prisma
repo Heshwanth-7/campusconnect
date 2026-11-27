@@ -30,6 +30,7 @@ model User {
   refreshTokens           RefreshToken[]
   lostFoundPosts          LostFoundPost[]
   events                  Event[]
+  notifications           Notification[]
   registrations           Registration[]
 }
 
@@ -121,6 +122,7 @@ model Registration {
   userId      String             @db.Uuid
   eventId     String             @db.Uuid
   status      RegistrationStatus
+  reminderSentAt DateTime?         @db.Timestamptz(3)
   qrNonce     String?            @db.Uuid
   checkedInAt DateTime?          @db.Timestamptz(3)
   queuedAt    DateTime           @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
@@ -196,4 +198,33 @@ model Match {
 
   @@unique([lostPostId, foundPostId])
   @@index([foundPostId])
+}
+
+enum NotificationType {
+  SEAT_CONFIRMED
+  WAITLIST_PROMOTED
+  EVENT_REMINDER
+  MATCH_FOUND
+  MATCH_CONFIRMED
+  EVENT_APPROVED
+  EVENT_REJECTED
+}
+
+model Notification {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  type            NotificationType
+  title           String
+  message         String
+  linkPath        String
+  readAt          DateTime?        @db.Timestamptz(3)
+  emailSentAt     DateTime?        @db.Timestamptz(3)
+  emailLeaseUntil DateTime?        @db.Timestamptz(3)
+  emailAttempts   Int              @default(0)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt, id])
+  @@index([userId, readAt])
+  @@index([emailSentAt, emailAttempts])
 }

@@ -1,3 +1,4 @@
+import { Notifications } from './pages/Notifications';
 import { Ticket, Attendance } from './pages/TicketAttendance';
 import { LostFound } from './pages/LostFound';
 import { PostItem } from './pages/PostItem';
@@ -39,6 +40,7 @@ createRoot(root).render(
           <Route element={<ProtectedRoute />}>
             <Route element={<AppNav />}>
               <Route path="/" element={<Home />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/lostfound" element={<LostFound />} />
               <Route path="/lostfound/new" element={<PostItem />} />
               <Route path="/lostfound/matches" element={<PossibleMatches />} />

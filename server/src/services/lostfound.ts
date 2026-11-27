@@ -9,7 +9,7 @@ import { notifyUser } from './notify-user.ts';
 type Tx = Prisma.TransactionClient;
 type Fields = z.infer<typeof postFields>;
 type Actor = { id: string; role: Role };
-type Notice = { matchId: string; users: string[] };
+type Notice = { type: 'MATCH_FOUND' | 'MATCH_CONFIRMED'; title: string; users: string[] };
 
 async function write<T>(work: (tx: Tx, notices: Notice[]) => Promise<T>) {
   const notices: Notice[] = [];
@@ -18,8 +18,11 @@ async function write<T>(work: (tx: Tx, notices: Notice[]) => Promise<T>) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(143117, 1)`;
     return work(tx, notices);
   }, { isolationLevel: 'ReadCommitted', timeout: 30000 });
-  for (const { matchId, users } of notices) {
-    for (const userId of users) notifyUser(userId, 'possible-match', { matchId });
+  for (const { type, title, users } of notices) {
+    for (const userId of users) await notifyUser(userId, type, {
+      message: type === 'MATCH_FOUND' ? `Review a possible match for ${title}.` : `Both students confirmed the match for ${title}.`,
+      linkPath: '/lostfound/matches',
+    });
   }
   return result;
 }
@@ -46,7 +49,7 @@ async function suggest(tx: Tx, post: LostFoundPost, notices: Notice[], edited = 
     const pair = { lostPostId: lost.id, foundPostId: found.id };
     const inserted = await tx.match.createManyAndReturn({ data: { ...pair, score }, skipDuplicates: true, select: { id: true } });
     if (inserted.length) {
-      notices.push({ matchId: inserted[0].id, users: [lost.userId, found.userId] });
+      notices.push({ type: 'MATCH_FOUND', title: lost.title, users: [lost.userId, found.userId] });
     } else if (edited) {
       await tx.match.updateMany({ where: { ...pair, status: 'SUGGESTED' },
         data: { score, lostUserConfirmedAt: null, foundUserConfirmedAt: null } });
@@ -163,6 +166,7 @@ export function decide(id: string, userId: string, action: 'confirm' | 'dismiss'
     const both = Boolean(lost ? pair.foundUserConfirmedAt : pair.lostUserConfirmedAt);
     await tx.match.update({ where: { id }, data: { [side]: pair[side] ?? new Date(), status: both ? 'CONFIRMED' : 'SUGGESTED' } });
     if (both) {
+      notices.push({ type: 'MATCH_CONFIRMED', title: pair.lostPost.title, users: [pair.lostPost.userId, pair.foundPost.userId] });
       await tx.lostFoundPost.updateMany({ where: { id: { in: ids } }, data: { status: 'MATCHED' } });
       await tx.match.deleteMany({ where: { ...involving(ids), status: 'SUGGESTED' } });
     }

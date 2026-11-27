@@ -5,6 +5,11 @@ import { app } from '../app.ts';
 import { makeAccessToken } from '../utils/auth-tokens.ts';
 import { db } from '../utils/prisma.ts';
 
+import { sendMail } from '../services/mail.ts';
+import { sendReminders, retryEmails } from '../services/notification-jobs.ts';
+
+vi.mock('../services/mail.ts', () => ({ sendMail: vi.fn(async () => {}) }));
+
 const origin = 'http://localhost:5173';
 const prefix = `registration-${randomUUID()}`;
 let organizerId: string;
@@ -83,6 +88,9 @@ test('cancelling a confirmed registration promotes the first waiting user and sh
   expect((await join(first, id).expect(201)).body.myWaitlistPosition).toBe(1);
   expect((await join(second, id).expect(201)).body.myWaitlistPosition).toBe(2);
   await leave(confirmed, id).expect(200);
+  expect(await db().notification.count({ where: {
+    userId: first, type: 'WAITLIST_PROMOTED', linkPath: eventPath(id),
+  } })).toBe(1);
   const details = await api(first, 'get', eventPath(id)).expect(200);
   expect(details.body.event).toMatchObject({ seatsLeft: 0, myRegistrationStatus: 'CONFIRMED', myWaitlistPosition: null });
   const mine = await api(second, 'get', '/registrations/mine').expect(200);
@@ -237,4 +245,53 @@ test('registration follows the configured deadline and clearing it restores the 
   const cleared = await api(adminId, 'patch', eventPath(id)).send({ registrationDeadline: null }).expect(200);
   expect(cleared.body.event.registrationDeadline).toBeNull();
   await join(students[1], id).expect(201);
+});
+
+test('registration survives SMTP failure and retries stop at three attempts', async () => {
+  const { id } = await event(1);
+  const mail = vi.mocked(sendMail);
+  mail.mockClear().mockRejectedValue(new Error('SMTP unavailable'));
+  try {
+    await join(students[0], id).expect(201);
+    const where = { userId: students[0], type: 'SEAT_CONFIRMED' as const, linkPath: eventPath(id) };
+    expect(await db().notification.findFirstOrThrow({ where })).toMatchObject({ emailSentAt: null, emailAttempts: 1 });
+    for (let run = 0; run < 4; run++) await retryEmails();
+    expect(await db().notification.findFirstOrThrow({ where })).toMatchObject({ emailSentAt: null, emailAttempts: 3 });
+    expect(mail.mock.calls.filter(([message]) => message.text.includes(eventPath(id)))).toHaveLength(3);
+  } finally { mail.mockResolvedValue(undefined); }
+});
+
+test('overlapping and repeated reminder jobs deliver one reminder', async () => {
+  const { id } = await event(1);
+  const now = new Date();
+  await db().event.update({ where: { id }, data: { title: '<Campus & friends>', startsAt: new Date(+now + 3600_000) } });
+  await join(students[0], id).expect(201);
+  await join(students[1], id).expect(201);
+  await Promise.all([sendReminders(now), sendReminders(now)]);
+  await sendReminders(now);
+  const notices = await db().notification.findMany({ where: { type: 'EVENT_REMINDER', linkPath: eventPath(id) } });
+  expect(notices).toHaveLength(1);
+  expect(notices[0]).toMatchObject({ userId: students[0], emailSentAt: expect.any(Date), emailAttempts: 1 });
+  const emails = vi.mocked(sendMail).mock.calls.filter(([email]) => email.subject === 'Event reminder' && email.text.includes(eventPath(id)));
+  expect(emails).toHaveLength(1);
+  expect(emails[0][0].html).toContain('&lt;Campus &amp; friends&gt;');
+});
+
+test('listing, counting and marking notifications read are owner-scoped', async () => {
+  const { id } = await event(1);
+  const [owner, other] = students;
+  await join(owner, id).expect(201);
+  const notice = await db().notification.findFirstOrThrow({ where: { userId: owner, linkPath: eventPath(id) } });
+  const path = '/notifications';
+  const read = path + '/' + notice.id + '/read';
+  await api(other, 'post', read).expect(404);
+  await api(other, 'post', path + '/read-all').expect(204);
+  expect(await db().notification.findUniqueOrThrow({ where: { id: notice.id } })).toMatchObject({ readAt: null });
+  expect((await api(other, 'get', path + '?pageSize=100').expect(200)).text).not.toContain(notice.id);
+  expect((await api(owner, 'get', path + '?pageSize=1').expect(200)).body.notifications[0].id).toBe(notice.id);
+  const count = async () => (await api(owner, 'get', path + '/unread-count').expect(200)).body.count;
+  const before = await count();
+  await api(owner, 'post', read).expect(204);
+  await api(owner, 'post', read).expect(204);
+  expect(await count()).toBe(before - 1);
 });
