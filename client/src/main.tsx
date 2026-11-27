@@ -1,3 +1,4 @@
+import { AdminPanel } from './pages/admin/AdminPanel';
 import { Notifications } from './pages/Notifications';
 import { Ticket, Attendance } from './pages/TicketAttendance';
 import { LostFound } from './pages/LostFound';
@@ -39,6 +40,10 @@ createRoot(root).render(
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* Auth: signed in, any role. */}
           <Route element={<ProtectedRoute />}>
+            {/* Auth: administrators only. */}
+            <Route element={<RoleRoute roles={['ADMIN']} />}>
+              <Route path="/admin/:section?" element={<AdminPanel />} />
+            </Route>
             <Route path="/onboarding" element={<Profile onboarding />} />
             <Route element={<AppNav />}>
               <Route path="/profile" element={<Profile />} />

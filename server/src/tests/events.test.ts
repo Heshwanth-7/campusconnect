@@ -31,6 +31,7 @@ beforeAll(async () => {
 afterAll(async () => {
   try {
     const id = { in: [...ids.values()] };
+    await db().auditLog.deleteMany({ where: { actorId: id } });
     await db().event.deleteMany({ where: { organizerId: id } });
     await db().user.deleteMany({ where: { id } });
   } finally {

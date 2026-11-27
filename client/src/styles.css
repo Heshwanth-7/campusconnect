@@ -58,3 +58,33 @@
     @apply font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary;
   }
 }
+
+@layer components {
+  .admin-table {
+    @apply w-full overflow-x-auto rounded-xl border border-border bg-surface shadow-sm;
+  }
+  .admin-table table {
+    @apply w-full min-w-[36rem] text-left text-sm;
+  }
+  .admin-table th {
+    @apply border-b border-border bg-slate-50 px-4 py-3 font-semibold;
+  }
+  .admin-table td {
+    @apply max-w-sm border-b border-border px-4 py-3 wrap-anywhere;
+  }
+  .admin-table tr:last-child td {
+    @apply border-b-0;
+  }
+  .admin-table small {
+    @apply mt-1 block text-xs text-muted;
+  }
+  .admin-filters {
+    @apply flex flex-wrap items-end gap-3;
+  }
+  .admin-layout label {
+    @apply block max-w-full text-sm font-semibold;
+  }
+  .admin-layout label > .auth-input {
+    @apply mt-1 block font-normal;
+  }
+}

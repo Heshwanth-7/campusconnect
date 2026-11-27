@@ -1,3 +1,4 @@
+import { audit } from './audit.ts';
 import { z } from 'zod';
 import type { LostFoundPost, Prisma, Role } from '../generated/prisma/client.ts';
 import type { postFields, postQuery } from '../validators/lostfound.ts';
@@ -107,6 +108,7 @@ export function deletePost(id: string, actor: Actor) {
   return write(async (tx, notices) => {
     const post = await owned(tx, id, actor, true);
     const pair = await tx.match.findFirst({ where: { ...involving([id]), status: 'CONFIRMED' } });
+    if (actor.role === 'ADMIN') await audit(tx, actor.id, 'POST_DELETED', 'LostFoundPost', id, { title: post.title });
     await tx.lostFoundPost.delete({ where: { id } });
     if (pair) await reopen(tx, [pair.lostPostId, pair.foundPostId], notices);
     return post.imagePath;

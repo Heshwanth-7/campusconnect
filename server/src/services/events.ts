@@ -1,3 +1,4 @@
+import { audit } from './audit.ts';
 import type { Request } from 'express';
 import { removePhoto, savePhoto } from './item-photo.ts';
 import type { Event, Prisma, Role } from '../generated/prisma/client.ts';
@@ -115,7 +116,8 @@ export async function updateEvent(actor: Actor, id: string, patch: Patch) {
 
 export async function deleteEvent(actor: Actor, id: string) {
   const deleted = await db().$transaction(async (tx) => {
-    await lockOwnedEvent(tx, actor, id);
+    const event = await lockOwnedEvent(tx, actor, id);
+    if (actor.role === 'ADMIN') await audit(tx, actor.id, 'EVENT_DELETED', 'Event', id, { title: event.title });
     return tx.event.delete({ where: { id } });
   }, seatTransaction);
   await removePhoto(deleted.posterImagePath);

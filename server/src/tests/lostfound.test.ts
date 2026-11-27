@@ -22,6 +22,7 @@ beforeAll(async () => {
   }
 });
 afterAll(async () => {
+  await db().auditLog.deleteMany({ where: { actorId: { in: users.map(user => user.id) } } });
   await db().user.deleteMany({ where: { id: { in: users.map(user => user.id) } } });
   await db().$disconnect();
   vi.unstubAllEnvs();

@@ -39,6 +39,7 @@ export function Home() {
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <Link className="auth-link" to="/profile">Profile</Link>
+          {user?.role === 'ADMIN' && <Link className="auth-link" to="/admin">Admin Panel</Link>}
           <button className="secondary-button shrink-0" disabled={busy} onClick={() => void logout()}>
             {busy ? 'Logging out…' : 'Log out'}
           </button>

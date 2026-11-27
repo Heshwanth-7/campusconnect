@@ -1,3 +1,4 @@
+import { adminRouter } from './routes/admin.ts';
 import { feedRouter } from './routes/feed.ts';
 import { notificationsRouter } from './routes/notifications.ts';
 import express from 'express';
@@ -22,6 +23,7 @@ app.use(requireClientOrigin);
 app.use(express.json({ limit: '16kb' }));
 // Auth: signed-in students can view item photos. Helmet sets X-Content-Type-Options: nosniff.
 app.use('/uploads', requireAuth, express.static(uploadDir, { index: false, cacheControl: false }));
+app.use('/api/admin', adminRouter);
 app.use('/api/lostfound', postsRouter);
 app.use('/api/matches', matchesRouter);
 app.use('/api', feedRouter);
