@@ -10,6 +10,7 @@ const fields = z.strictObject({
   tags: z.array(z.enum(INTERESTS)).max(INTERESTS.length).refine((tags) => new Set(tags).size === tags.length),
   venue: z.string().trim().min(1).max(160),
   startsAt: instant,
+  registrationDeadline: instant.nullish(),
   endsAt: instant,
   capacity: z.number().int().min(1).max(2_147_483_647),
   clubName: z.string().trim().min(1).max(160),

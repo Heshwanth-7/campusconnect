@@ -1,3 +1,5 @@
+import type { Request } from 'express';
+import { removePhoto, savePhoto } from './item-photo.ts';
 import type { Event, Prisma, Role } from '../generated/prisma/client.ts';
 import type { z } from 'zod';
 import { HttpError } from '../utils/http-error.ts';
@@ -112,8 +114,32 @@ export async function updateEvent(actor: Actor, id: string, patch: Patch) {
 }
 
 export async function deleteEvent(actor: Actor, id: string) {
-  await db().$transaction(async (tx) => {
+  const deleted = await db().$transaction(async (tx) => {
     await lockOwnedEvent(tx, actor, id);
-    await tx.event.delete({ where: { id } });
+    return tx.event.delete({ where: { id } });
   }, seatTransaction);
+  await removePhoto(deleted.posterImagePath);
+}
+
+export async function changePoster(actor: Actor, id: string, upload?: Request) {
+  let newPath: string | null = null;
+  const previousPath = await db().$transaction(async tx => {
+    const event = await lockOwnedEvent(tx, actor, id);
+    if (upload) {
+      newPath = await savePhoto(upload);
+      if (!newPath) throw new HttpError(400, 'Choose a poster to upload.');
+    }
+    if (event.posterImagePath !== newPath) {
+      const needsReview = actor.role !== 'ADMIN' && event.status === 'APPROVED';
+      await tx.event.update({ where: { id }, data: {
+        posterImagePath: newPath, ...(needsReview && { status: 'PENDING', rejectionReason: null }),
+      } });
+    }
+    return event.posterImagePath;
+  }, seatTransaction).catch(async error => {
+    await removePhoto(newPath);
+    throw error;
+  });
+  await removePhoto(previousPath);
+  return newPath;
 }

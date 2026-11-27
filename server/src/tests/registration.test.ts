@@ -221,3 +221,20 @@ test('a returning student promoted from the waitlist receives a fresh ticket', a
   expect((await scan(id, token)).body.result).toBe('INVALID');
   expect((await scan(id, fresh)).body.result).toBe('SUCCESS');
 });
+
+test('registration follows the configured deadline and clearing it restores the start-time cutoff', async () => {
+  const registrationDeadline = new Date(Date.now() - 60_000).toISOString();
+  const { body } = await api(adminId, 'post', '/events').send({
+    title: 'Deadline test', description: 'Campus workshop', category: 'WORKSHOP', tags: [],
+    venue: 'Lab', clubName: 'Test Club', capacity: 2, startsAt: new Date(Date.now() + 3_600_000).toISOString(),
+    endsAt: new Date(Date.now() + 7_200_000).toISOString(), registrationDeadline,
+  }).expect(201);
+  const id = body.event.id;
+  expect(body.event.registrationDeadline).toBe(registrationDeadline);
+  await join(students[0], id).expect(409);
+  await api(adminId, 'patch', eventPath(id)).send({ registrationDeadline: new Date(Date.now() + 60_000).toISOString() }).expect(200);
+  await join(students[0], id).expect(201);
+  const cleared = await api(adminId, 'patch', eventPath(id)).send({ registrationDeadline: null }).expect(200);
+  expect(cleared.body.event.registrationDeadline).toBeNull();
+  await join(students[1], id).expect(201);
+});

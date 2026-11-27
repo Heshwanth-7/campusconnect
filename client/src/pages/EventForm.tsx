@@ -1,9 +1,9 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router';
 import { z } from 'zod';
-import { eventCategory, saveEvent } from '../api/events';
+import { eventCategory, saveEvent, setPoster } from '../api/events';
 import type { CampusEvent, EventInput } from '../api/events';
 import { categoryLabels } from '../components/EventBadges';
 import { Feedback } from '../components/Feedback';
@@ -22,6 +22,7 @@ const fields = z.object({
   venue: z.string().trim().min(1, 'Enter a venue.').max(160),
   startsAt: dateInput,
   endsAt: dateInput,
+  registrationDeadline: z.union([z.literal(''), dateInput]),
   capacity: z.string().regex(/^\d+$/, 'Enter a whole number greater than zero.')
     .refine((value) => Number(value) >= 1 && Number(value) <= 2_147_483_647, 'Enter a supported capacity.'),
   clubName: z.string().trim().min(1, 'Enter a club name.').max(160),
@@ -42,18 +43,30 @@ function Field({ label, error, children }: {
   );
 }
 
-function Form({ existing }: { existing?: CampusEvent }) {
+function Form({ existing: initial }: { existing?: CampusEvent }) {
+  const [existing, setExisting] = useState(initial);
+  const [poster, choosePoster] = useState<File | null | undefined>();
+  const [preview, setPreview] = useState('');
+  const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!poster) { setPreview(''); return; }
+    const url = URL.createObjectURL(poster);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [poster]);
+  const posterUrl = poster === undefined ? existing?.posterImagePath : preview;
   const [failure, setFailure] = useState('');
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { register, handleSubmit, setError, formState: { errors, dirtyFields, isSubmitting } } = useForm<z.infer<typeof fields>>({
+  const { register, handleSubmit, setError, reset, formState: { errors, dirtyFields, isSubmitting } } = useForm<z.infer<typeof fields>>({
     resolver: formResolver(fields),
     defaultValues: existing ? {
       title: existing.title, description: existing.description, category: existing.category,
       tags: existing.tags, venue: existing.venue, clubName: existing.clubName,
       startsAt: localDateTime(existing.startsAt), endsAt: localDateTime(existing.endsAt),
+      registrationDeadline: existing.registrationDeadline ? localDateTime(existing.registrationDeadline) : '',
       capacity: String(existing.capacity),
-    } : { category: 'MUSIC', tags: [] },
+    } : { category: 'MUSIC', tags: [], registrationDeadline: '' },
   });
 
   const submit = handleSubmit(async (values) => {
@@ -64,19 +77,22 @@ function Form({ existing }: { existing?: CampusEvent }) {
       setError('endsAt', { message: 'End time must be after start time.' }, { shouldFocus: true });
       return;
     }
-    const body: EventInput = { ...values, capacity: Number(values.capacity), startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+    const body: EventInput = { ...values, registrationDeadline: values.registrationDeadline ? new Date(values.registrationDeadline).toISOString() : null, capacity: Number(values.capacity), startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
     const patch = existing
       ? Object.fromEntries(Object.entries(body).filter(([key]) => dirtyFields[key as keyof EventInput]))
       : body;
-    if (existing && !Object.keys(patch).length) {
-      void navigate(`/events/${existing.id}`);
-      return;
-    }
+    let saved = existing;
     try {
-      const event = await saveEvent(patch, existing?.id);
-      void navigate(`/events/${event.id}`, { replace: true });
+      if (!saved || Object.keys(patch).length) {
+        saved = await saveEvent(patch, existing?.id);
+        setExisting(saved);
+        reset(values);
+      }
+      if (poster !== undefined) await setPoster(saved.id, poster);
+      void navigate(`/events/${saved.id}`, { replace: true });
     } catch (error) {
-      setFailure(errorMessage(error));
+      const partial = saved && poster !== undefined && (!existing || saved !== existing);
+      setFailure((partial ? 'Event details saved. Poster update failed. ' : '') + errorMessage(error));
     }
   });
 
@@ -101,7 +117,29 @@ function Form({ existing }: { existing?: CampusEvent }) {
           )}</Field>
           <Field label="Starts at" error={errors.startsAt?.message}>{(attributes) => <input {...attributes} {...register('startsAt')} className="auth-input" type="datetime-local" />}</Field>
           <Field label="Ends at" error={errors.endsAt?.message}>{(attributes) => <input {...attributes} {...register('endsAt')} className="auth-input" type="datetime-local" />}</Field>
+          <Field label="Registration deadline (optional)" error={errors.registrationDeadline?.message}>{(attributes) =>
+            <input {...attributes} {...register('registrationDeadline')} className="auth-input" type="datetime-local" />}</Field>
         </div>
+        <Field label="Event poster (optional, up to 5 MB)">{(attributes) =>
+          <input {...attributes} ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="auth-input py-2"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 5 * 1024 * 1024) {
+                setFailure('Choose a poster of 5 MB or less.');
+                e.target.value = '';
+                return;
+              }
+              setFailure('');
+              choosePoster(file);
+            }} />}</Field>
+        {posterUrl && <div className="space-y-2">
+          <img src={posterUrl} alt="Event poster preview" className="max-h-64 w-full rounded-xl object-contain" />
+          <button type="button" className="secondary-button" onClick={() => {
+            choosePoster(existing?.posterImagePath ? null : undefined);
+            if (fileInput.current) fileInput.current.value = '';
+          }}>Remove poster</button>
+        </div>}
         <fieldset className="min-w-0">
           <legend className="mb-1 text-sm font-semibold">Tags</legend>
           <div className="flex flex-wrap gap-x-3">

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { listEvents } from '../api/events';
 import type { CampusEvent, Category } from '../api/events';
-import { CategoryBadge, categoryLabels, EventStatusBadge } from '../components/EventBadges';
+import { CategoryBadge, EventPoster, categoryLabels, EventStatusBadge } from '../components/EventBadges';
 import { Feedback } from '../components/Feedback';
 import { useAuth } from '../context/AuthContext';
 import { errorMessage } from '../lib/auth-forms';
@@ -54,6 +54,7 @@ function EventResults(filters: Filters) {
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {events.map((event) => (
           <li key={event.id} className="min-w-0 space-y-2 rounded-xl border border-border bg-surface p-4 shadow-sm">
+            <EventPoster event={event} />
             <div className="flex flex-wrap gap-2">
               <CategoryBadge category={event.category} />
               {(mine || event.status !== 'APPROVED') && <EventStatusBadge status={event.status} />}

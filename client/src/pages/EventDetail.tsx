@@ -4,7 +4,7 @@ import { changeRegistration } from '../api/registrations';
 import type { RegistrationResult } from '../api/registrations';
 import { RegistrationStatus } from '../components/RegistrationStatus';
 import { deleteEvent } from '../api/events';
-import { CategoryBadge, EventStatusBadge } from '../components/EventBadges';
+import { CategoryBadge, EventPoster, EventStatusBadge } from '../components/EventBadges';
 import { Feedback } from '../components/Feedback';
 import { useAuth } from '../context/AuthContext';
 import { useEvent } from '../hooks/useEvent';
@@ -25,7 +25,8 @@ export function EventDetail() {
   const summary = registration && registration.eventId === event?.id ? registration.summary : event;
   const status = summary?.myRegistrationStatus;
   const active = status === 'CONFIRMED' || status === 'WAITLISTED';
-  const open = event?.status === 'APPROVED' && Date.parse(event.startsAt) > Date.now();
+  const closesAt = event?.registrationDeadline ?? event?.startsAt;
+  const open = event?.status === 'APPROVED' && closesAt && Date.parse(closesAt) > Date.now();
 
   async function updateRegistration(method: 'POST' | 'DELETE') {
     if (!event) return;
@@ -69,10 +70,12 @@ export function EventDetail() {
             <h1 className="break-words text-2xl font-semibold">{event.title}</h1>
             <p className="mt-1 break-words text-muted">{event.clubName}</p>
           </div>
+          <EventPoster event={event} full />
           <p className="whitespace-pre-wrap break-words">{event.description}</p>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="font-semibold">Starts</dt><dd><time dateTime={event.startsAt}>{formatEventTime(event.startsAt)}</time></dd></div>
             <div><dt className="font-semibold">Ends</dt><dd><time dateTime={event.endsAt}>{formatEventTime(event.endsAt)}</time></dd></div>
+            {closesAt && <div><dt className="font-semibold">Registration closes</dt><dd><time dateTime={closesAt}>{formatEventTime(closesAt)}</time></dd></div>}
             <div><dt className="font-semibold">Venue</dt><dd className="break-words">{event.venue}</dd></div>
             <div><dt className="font-semibold">Seats left</dt><dd>{summary?.seatsLeft} of {event.capacity}</dd></div>
           </dl>

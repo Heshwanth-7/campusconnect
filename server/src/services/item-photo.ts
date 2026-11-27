@@ -9,15 +9,18 @@ import { HttpError } from '../utils/http-error.ts';
 
 export const uploadDir = fileURLToPath(new URL('../../uploads/', import.meta.url));
 const maxBytes = 5 * 1024 * 1024;
-const receive = multer({ limits: { files: 1, fields: 8, parts: 10, fileSize: maxBytes + 1, fieldSize: 16384 } }).single('photo');
+const uploads = multer({ limits: { files: 1, fields: 8, parts: 10, fileSize: maxBytes + 1, fieldSize: 16384 } });
 
-export const receivePhoto: RequestHandler = (req, res, next) => {
-  if (!req.is('multipart/form-data')) return next(new HttpError(415, 'Use multipart form data.'));
-  receive(req, res, error => {
-    if (!error) return next();
-    next(error.code === 'LIMIT_FILE_SIZE' ? new HttpError(413, 'Photo must be 5 MB or smaller.') : new HttpError(400, 'Invalid multipart form.'));
-  });
-};
+export function imageUpload(field: 'photo' | 'poster'): RequestHandler {
+  const receive = uploads.single(field);
+  return (req, res, next) => {
+    if (!req.is('multipart/form-data')) return next(new HttpError(415, 'Use multipart form data.'));
+    receive(req, res, error => {
+      if (!error) return next();
+      next(error.code === 'LIMIT_FILE_SIZE' ? new HttpError(413, 'Photo must be 5 MB or smaller.') : new HttpError(400, 'Invalid multipart form.'));
+    });
+  };
+}
 
 export async function savePhoto(request: Request & { file?: { buffer: Buffer } }) {
   if (!request.file) return null;

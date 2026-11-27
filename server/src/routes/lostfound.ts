@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/require-auth.ts';
 import * as items from '../services/lostfound.ts';
-import { receivePhoto, removePhoto, savePhoto } from '../services/item-photo.ts';
+import { imageUpload, removePhoto, savePhoto } from '../services/item-photo.ts';
 import { postFields, postPatch, postQuery } from '../validators/lostfound.ts';
 
 export const postsRouter = Router();
@@ -11,7 +11,7 @@ export const matchesRouter = Router();
 postsRouter.use(requireAuth);
 matchesRouter.use(requireAuth);
 
-postsRouter.post('/', receivePhoto, async (req, res) => {
+postsRouter.post('/', imageUpload('photo'), async (req, res) => {
   const data = postFields.parse(req.body);
   const imagePath = await savePhoto(req);
   const post = await items.createPost(res.locals.user.id, data, imagePath).catch(async error => {

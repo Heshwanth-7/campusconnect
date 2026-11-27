@@ -88,7 +88,7 @@ async function resultFor(tx: Prisma.TransactionClient, registration: Registratio
 export async function register(userId: string, eventId: string) {
   const result = await db().$transaction(async (tx) => {
     const event = await lockEvent(tx, eventId);
-    if (event.status !== 'APPROVED' || event.startsAt <= new Date()) {
+    if (event.status !== 'APPROVED' || (event.registrationDeadline ?? event.startsAt) <= new Date()) {
       throw new HttpError(409, 'Registration is closed for this event.');
     }
     const where = { userId_eventId: { userId, eventId } };

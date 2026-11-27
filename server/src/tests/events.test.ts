@@ -153,3 +153,33 @@ describe('events', () => {
     expect(inclusive.body.events).toHaveLength(1);
   });
 });
+
+const posterPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==', 'base64');
+
+test('only the owner or admin can attach, replace and remove the event poster', async () => {
+  const { body } = await client('ORGANIZER', 'post').send(eventBody()).expect(201);
+  const path = '/' + body.event.id;
+  const poster = path + '/poster';
+  expect(body.event.posterImagePath).toBeNull();
+  await db().event.update({ where: { id: body.event.id }, data: { status: 'APPROVED' } });
+  await client('STUDENT', 'post', poster).attach('poster', posterPng, 'poster.png').expect(403);
+  await client('STUDENT', 'delete', poster).expect(403);
+  const owner = await client('ORGANIZER', 'post', poster).attach('poster', posterPng, 'original.txt').expect(200);
+  const first = owner.body.posterImagePath;
+  expect(first).toMatch(/^\/uploads\/[a-f0-9-]{36}\.png$/);
+  const admin = await client('ADMIN', 'post', poster).attach('poster', posterPng, 'original.png').expect(200);
+  expect(admin.body.posterImagePath).not.toBe(first);
+  const view = (file: string) => request(app).get(file).set('Cookie', 'access_token=' + makeAccessToken(ids.get('ADMIN')!, new Date()));
+  await view(first).expect(404);
+  await view(admin.body.posterImagePath).expect(200).expect('X-Content-Type-Options', 'nosniff');
+  expect((await client('ADMIN', 'get', path)).body.event.posterImagePath).toBe(admin.body.posterImagePath);
+  await client('ADMIN', 'delete', poster).expect(204);
+  expect((await client('ADMIN', 'get', path)).body.event.posterImagePath).toBeNull();
+  await view(admin.body.posterImagePath).expect(404);
+});
+
+test('rejects text disguised as a JPEG event poster', async () => {
+  const { body } = await client('ADMIN', 'post').send(eventBody()).expect(201);
+  await client('ADMIN', 'post', '/' + body.event.id + '/poster')
+    .attach('poster', Buffer.from('plain text'), { filename: 'poster.jpg', contentType: 'image/jpeg' }).expect(415);
+});

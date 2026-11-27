@@ -15,6 +15,8 @@ const event = z.object({
   venue: z.string(),
   startsAt: z.iso.datetime(),
   endsAt: z.iso.datetime(),
+  registrationDeadline: z.iso.datetime().nullable(),
+  posterImagePath: z.string().nullable(),
   capacity: z.number(),
   seatsLeft: z.number(),
   myRegistrationStatus: registrationStatus.nullable(),
@@ -25,7 +27,7 @@ const event = z.object({
   organizerId: z.uuid(),
 });
 export type CampusEvent = z.infer<typeof event>;
-export type EventInput = Pick<CampusEvent, 'title' | 'description' | 'category' | 'tags' | 'venue' | 'startsAt' | 'endsAt' | 'capacity' | 'clubName'>;
+export type EventInput = Pick<CampusEvent, 'title' | 'description' | 'category' | 'tags' | 'venue' | 'startsAt' | 'endsAt' | 'capacity' | 'clubName' | 'registrationDeadline'>;
 
 const eventResponse = z.object({ event });
 const listResponse = z.object({ events: z.array(event), page: z.number(), hasMore: z.boolean() });
@@ -50,4 +52,12 @@ export async function saveEvent(fields: Partial<EventInput>, id?: string) {
 
 export async function deleteEvent(id: string) {
   await apiRequest(`/events/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function setPoster(id: string, poster: File | null) {
+  const path = `/events/${encodeURIComponent(id)}/poster`;
+  if (!poster) return apiRequest(path, { method: 'DELETE' });
+  const body = new FormData();
+  body.set('poster', poster);
+  return apiRequest(path, { method: 'POST', body });
 }

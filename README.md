@@ -67,3 +67,11 @@ CLIENT_URL=https://192.168.1.20:5173 npm run dev:https
 Open that exact HTTPS address on the phone, accept the local development certificate if prompted, and allow camera access after tapping **Start camera**. The HTTPS command exposes Vite on the LAN and proxies the API to Express on loopback. Setting `CLIENT_URL` to the phone's exact origin also allows authenticated check-in requests through the server's origin check. If the phone blocks the self-signed certificate, trust a local development certificate on the device or use the paste fallback on localhost.
 
 See [QR ticket security](docs/QR_SECURITY.md) for the signing and single-use rules.
+
+## Event posters and registration deadlines
+
+On **Create event** or **Edit event**, choose a JPEG, PNG, or WebP poster up to 5 MB. The form previews it before saving. Event cards crop the poster to a fixed height and the detail page displays the whole image. The category icon fills the poster space when there is no image.
+
+The event owner or an admin can send a multipart `poster` field to `POST /api/events/:id/poster` or remove it with `DELETE /api/events/:id/poster`. Event responses include the nullable `posterImagePath`. Posters use the Lost & Found upload service, which checks the file signature, generates a random filename and serves the image with `X-Content-Type-Options: nosniff`.
+
+Set **Registration deadline** to choose when sign-ups and new waitlist entries close. Leaving it blank uses the event start time. The create and edit APIs accept an ISO datetime with a timezone for `registrationDeadline`. Send `null` on edit to clear it. Once registration closes, the API returns HTTP 409.

@@ -1,3 +1,4 @@
+import { imageUpload } from '../services/item-photo.ts';
 import { attendance } from '../services/checkin.ts';
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/require-auth.ts';
@@ -41,6 +42,18 @@ eventsRouter.patch('/:id', async (request, response) => {
 // Auth: event owner or admin.
 eventsRouter.delete('/:id', async (request, response) => {
   await events.deleteEvent(response.locals.user, eventId.parse(request.params.id));
+  response.status(204).end();
+});
+
+// Auth: event owner or admin, checked under the event lock before writing a file.
+eventsRouter.post('/:id/poster', imageUpload('poster'), async (request, response) => {
+  const posterImagePath = await events.changePoster(response.locals.user, eventId.parse(request.params.id), request);
+  response.json({ posterImagePath });
+});
+
+// Auth: event owner or admin.
+eventsRouter.delete('/:id/poster', async (request, response) => {
+  await events.changePoster(response.locals.user, eventId.parse(request.params.id));
   response.status(204).end();
 });
 

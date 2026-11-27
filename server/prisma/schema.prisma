@@ -89,6 +89,8 @@ model Event {
   category        EventCategory
   tags            String[]
   venue           String
+  posterImagePath String?
+  registrationDeadline DateTime? @db.Timestamptz(3)
   startsAt        DateTime      @db.Timestamptz(3)
   endsAt          DateTime      @db.Timestamptz(3)
   capacity        Int
